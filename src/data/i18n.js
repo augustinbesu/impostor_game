@@ -117,6 +117,7 @@ const translations = {
     categoryAdded: "Category created!",
     pairAdded: "Pair added!",
     nameTaken: "Name already exists",
+    pairsEnabled: "pairs active",
   },
 
   es: {
@@ -231,7 +232,8 @@ const translations = {
     "addWordsToExisting": "Agregar palabras a esta categoría",
     "categoryAdded": "¡Categoría creada!",
     "pairAdded": "¡Par agregado!",
-    "nameTaken": "Ese nombre ya existe"
+    "nameTaken": "Ese nombre ya existe",
+    "pairsEnabled": "pares activos",
     },
 };
 

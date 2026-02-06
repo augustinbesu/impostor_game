@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useGame } from "../context/GameContext";
 import { t } from "../data/i18n";
 import {
@@ -10,7 +10,7 @@ import { playReveal, playTap, haptic } from "../utils/sounds";
  * RevealScreen  Secure pass-and-play word reveal.
  *
  * Flow: "Tap to Reveal" → word shown → "Hide Word" → pass overlay → next player.
- * Subtle visual distinction for impostor (border/accent color) without labeling.
+ * Uses CSS-only opacity/transform transitions for smooth, flicker-free pass-and-play.
  */
 export default function RevealScreen() {
   const { state, actions } = useGame();
@@ -20,12 +20,21 @@ export default function RevealScreen() {
   const isLast = currentPlayerIndex === players.length - 1;
 
   const [phase, setPhase] = useState("ready"); // "ready" | "revealed" | "passing"
-  const [entering, setEntering] = useState(true);
+  // Animation state: "visible" = shown, "exit" = fading out, "enter" = fading in
+  const [anim, setAnim] = useState("visible");
+  const prevIndexRef = useRef(currentPlayerIndex);
 
+  // When currentPlayerIndex changes, run a smooth enter animation
   useEffect(() => {
-    setEntering(true);
-    const t = setTimeout(() => setEntering(false), 50);
-    return () => clearTimeout(t);
+    if (prevIndexRef.current !== currentPlayerIndex) {
+      prevIndexRef.current = currentPlayerIndex;
+      setAnim("enter");
+      // Trigger reflow then set to visible for the CSS transition
+      const raf = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setAnim("visible"));
+      });
+      return () => cancelAnimationFrame(raf);
+    }
   }, [currentPlayerIndex]);
 
   const handleReveal = useCallback(() => {
@@ -37,14 +46,32 @@ export default function RevealScreen() {
 
   const handleHide = useCallback(() => {
     if (phase !== "revealed") return;
-    setPhase("passing");
-    actions.hideWord();
+    // Fade out the word card, then show pass overlay
+    setAnim("exit");
+    setTimeout(() => {
+      setPhase("passing");
+      actions.hideWord();
+      // Enter the pass overlay smoothly
+      setAnim("enter");
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setAnim("visible"));
+      });
+    }, 280);
     if (soundEnabled) { playTap(); haptic("light"); }
   }, [phase, actions, soundEnabled]);
 
   const handleNext = useCallback(() => {
-    setPhase("ready");
-    actions.nextPlayer();
+    // Fade out pass overlay, then advance to next player
+    setAnim("exit");
+    setTimeout(() => {
+      setPhase("ready");
+      actions.nextPlayer();
+      // The useEffect above will handle the enter animation for the new player
+      setAnim("enter");
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setAnim("visible"));
+      });
+    }, 280);
     if (soundEnabled) { playTap(); haptic("light"); }
   }, [actions, soundEnabled]);
 
@@ -60,6 +87,12 @@ export default function RevealScreen() {
 
   const progress = ((currentPlayerIndex + (phase === "passing" ? 1 : 0)) / players.length) * 100;
 
+  // Compute transition class
+  const transClass =
+    anim === "exit" ? "phase-exit" :
+    anim === "enter" ? "phase-enter" :
+    "phase-visible";
+
   return (
     <div className="screen reveal-screen">
       {/* Progress */}
@@ -73,7 +106,7 @@ export default function RevealScreen() {
 
       {/* Ready */}
       {phase === "ready" && (
-        <div className={`reveal-card-container ${entering ? "entering" : ""}`}>
+        <div className={`reveal-card-container ${transClass}`}>
           <div className="reveal-card ready-card" onClick={handleReveal}>
             <div className="reveal-card-icon">
               <IconLock size={44} />
@@ -92,7 +125,7 @@ export default function RevealScreen() {
 
       {/* Revealed */}
       {phase === "revealed" && (
-        <div className="reveal-card-container">
+        <div className={`reveal-card-container ${transClass}`}>
           <div className={`reveal-card word-card ${player.isImpostor ? "impostor-card" : "normal-card"}`}>
             <div className="word-card-inner">
               <p className="word-card-label">{t(lang, "yourWordIs")}</p>
@@ -115,7 +148,7 @@ export default function RevealScreen() {
 
       {/* Passing */}
       {phase === "passing" && (
-        <div className="pass-overlay">
+        <div className={`pass-overlay ${transClass}`}>
           <div className="pass-content">
             <div className="pass-icon-ring">
               <IconChevronRight size={36} />

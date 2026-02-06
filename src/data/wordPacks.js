@@ -255,7 +255,7 @@ export function isBuiltIn(category) {
 }
 
 export function getRandomPair(category) {
-  const pairs = getCategoryPairs(category);
+  const pairs = getEnabledPairs(category);
   if (!pairs || pairs.length === 0) return null;
   return pairs[Math.floor(Math.random() * pairs.length)];
 }
@@ -273,6 +273,75 @@ export function getRandomPairFromCategories(selected) {
   const pair = getRandomPair(cat);
   if (!pair) return getRandomPairFromAny();
   return { pair, category: cat };
+}
+
+// +++ Per-pair selection (enabled/disabled) +++
+const PAIR_SEL_KEY = "impostor_pair_selection";
+
+/** Load the pair selection map: { categoryName: [0, 2, 5, ...] } (disabled indices) */
+export function loadDisabledPairs() {
+  try {
+    const d = localStorage.getItem(PAIR_SEL_KEY);
+    return d ? JSON.parse(d) : {};
+  } catch { return {}; }
+}
+
+export function saveDisabledPairs(map) {
+  try { localStorage.setItem(PAIR_SEL_KEY, JSON.stringify(map)); }
+  catch { /* storage full */ }
+}
+
+/** Toggle a specific pair index as disabled/enabled for a category */
+export function togglePairEnabled(category, pairIndex) {
+  const map = loadDisabledPairs();
+  if (!map[category]) map[category] = [];
+  const idx = map[category].indexOf(pairIndex);
+  if (idx >= 0) {
+    map[category].splice(idx, 1);
+  } else {
+    map[category].push(pairIndex);
+  }
+  // Clean up empty arrays
+  if (map[category].length === 0) delete map[category];
+  saveDisabledPairs(map);
+  return map;
+}
+
+/** Set all pairs for a category as enabled */
+export function enableAllPairs(category) {
+  const map = loadDisabledPairs();
+  delete map[category];
+  saveDisabledPairs(map);
+  return map;
+}
+
+/** Set all pairs for a category as disabled */
+export function disableAllPairs(category) {
+  const pairs = getCategoryPairs(category);
+  const map = loadDisabledPairs();
+  map[category] = pairs.map((_, i) => i);
+  saveDisabledPairs(map);
+  return map;
+}
+
+/** Check if a specific pair is enabled */
+export function isPairEnabled(category, pairIndex) {
+  const map = loadDisabledPairs();
+  if (!map[category]) return true;
+  return !map[category].includes(pairIndex);
+}
+
+/** Get only the enabled pairs for a category */
+export function getEnabledPairs(category) {
+  const allPairs = getCategoryPairs(category);
+  const map = loadDisabledPairs();
+  if (!map[category] || map[category].length === 0) return allPairs;
+  return allPairs.filter((_, i) => !map[category].includes(i));
+}
+
+/** Count enabled pairs for a category */
+export function getEnabledPairCount(category) {
+  return getEnabledPairs(category).length;
 }
 
 export default builtInPacks;

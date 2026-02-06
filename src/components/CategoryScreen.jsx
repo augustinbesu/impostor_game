@@ -4,6 +4,8 @@ import {
   getBuiltInCategories, getCustomCategoryNames, getCategoryPairs,
   isBuiltIn, addCustomCategory, updateCustomCategory,
   deleteCustomCategory, addPairsToBuiltIn, loadCustomCategories,
+  togglePairEnabled, enableAllPairs, disableAllPairs, isPairEnabled,
+  getEnabledPairCount, loadDisabledPairs,
 } from "../data/wordPacks";
 import { t, getCategoryDisplayName } from "../data/i18n";
 import {
@@ -39,6 +41,9 @@ export default function CategoryScreen() {
 
   // Refresh trigger for custom categories
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Track pair selection refreshes separately
+  const [pairRefreshKey, setPairRefreshKey] = useState(0);
 
   const builtInCats = getBuiltInCategories();
   const customCats = useMemo(() => getCustomCategoryNames(), [refreshKey]);
@@ -202,13 +207,13 @@ export default function CategoryScreen() {
             {formPairs.map((pair, idx) => (
               <div className="form-pair-row" key={idx}>
                 <input
-                  type="text" className="custom-input pair-input"
+                  type="text" className="custom-input pair-input pair-input-normal"
                   placeholder={t(lang, "word1Placeholder")}
                   value={pair[0]} onChange={e => updateFormPair(idx, 0, e.target.value)}
                   maxLength={30}
                 />
                 <input
-                  type="text" className="custom-input pair-input"
+                  type="text" className="custom-input pair-input pair-input-impostor"
                   placeholder={t(lang, "word2Placeholder")}
                   value={pair[1]} onChange={e => updateFormPair(idx, 1, e.target.value)}
                   maxLength={30}
@@ -257,12 +262,12 @@ export default function CategoryScreen() {
           <div className="form-pairs-list">
             {addPairs.map((pair, idx) => (
               <div className="form-pair-row" key={idx}>
-                <input type="text" className="custom-input pair-input" placeholder={t(lang, "word1Placeholder")}
+                <input type="text" className="custom-input pair-input pair-input-normal" placeholder={t(lang, "word1Placeholder")}
                   value={pair[0]} onChange={e => {
                     const n = [...addPairs]; n[idx] = [e.target.value, pair[1]]; setAddPairs(n);
                   }} maxLength={30}
                 />
-                <input type="text" className="custom-input pair-input" placeholder={t(lang, "word2Placeholder")}
+                <input type="text" className="custom-input pair-input pair-input-impostor" placeholder={t(lang, "word2Placeholder")}
                   value={pair[1]} onChange={e => {
                     const n = [...addPairs]; n[idx] = [pair[0], e.target.value]; setAddPairs(n);
                   }} maxLength={30}
@@ -287,9 +292,34 @@ export default function CategoryScreen() {
     );
   }
 
-  // +++ Render: Preview +++
+  // +++ Render: Preview with pair selection +++
   if (preview) {
     const pairs = getCategoryPairs(preview);
+    // eslint-disable-next-line no-unused-vars
+    const _pairRefresh = pairRefreshKey; // trigger re-render on pair toggle
+    const disabledMap = loadDisabledPairs();
+    const enabledCount = getEnabledPairCount(preview);
+    const allEnabled = enabledCount === pairs.length;
+    const noneEnabled = enabledCount === 0;
+
+    function handleTogglePair(idx) {
+      togglePairEnabled(preview, idx);
+      setPairRefreshKey(k => k + 1);
+      if (state.soundEnabled) haptic("light");
+    }
+
+    function handleSelectAllPairs() {
+      enableAllPairs(preview);
+      setPairRefreshKey(k => k + 1);
+      if (state.soundEnabled) { playTap(); haptic("light"); }
+    }
+
+    function handleDeselectAllPairs() {
+      disableAllPairs(preview);
+      setPairRefreshKey(k => k + 1);
+      if (state.soundEnabled) { playTap(); haptic("light"); }
+    }
+
     return (
       <div className="screen category-screen">
         <div className="cat-header">
@@ -297,16 +327,52 @@ export default function CategoryScreen() {
           <h2 className="cat-title">{getCategoryDisplayName(lang, preview)}</h2>
           <div style={{ width: 40 }} />
         </div>
-        <p className="cat-subtitle">{t(lang, "pairsCount", { n: pairs.length })}</p>
+        <p className="cat-subtitle">{enabledCount}/{pairs.length} {t(lang, "pairsEnabled")}</p>
+
+        {/* Color legend */}
+        <div className="pair-legend">
+          <span className="pair-legend-item">
+            <span className="pair-legend-dot normal-dot" />
+            {t(lang, "normalWord")}
+          </span>
+          <span className="pair-legend-item">
+            <span className="pair-legend-dot impostor-dot" />
+            {t(lang, "impostorWord")}
+          </span>
+        </div>
+
+        {/* Select All / Deselect All */}
+        <div className="cat-bulk-actions pair-bulk">
+          <button className="btn-ghost btn-sm" onClick={handleSelectAllPairs} disabled={allEnabled}>
+            {t(lang, "selectAll")}
+          </button>
+          <button className="btn-ghost btn-sm" onClick={handleDeselectAllPairs} disabled={noneEnabled}>
+            {t(lang, "deselectAll")}
+          </button>
+        </div>
 
         <div className="preview-pairs">
-          {pairs.map((p, i) => (
-            <div className="preview-pair" key={i}>
-              <span>{p[0]}</span>
-              <span className="preview-vs">vs</span>
-              <span>{p[1]}</span>
-            </div>
-          ))}
+          {pairs.map((p, i) => {
+            const enabled = isPairEnabled(preview, i);
+            return (
+              <div
+                className={`preview-pair selectable ${enabled ? "pair-enabled" : "pair-disabled"}`}
+                key={i}
+                onClick={() => handleTogglePair(i)}
+                role="checkbox"
+                aria-checked={enabled}
+                tabIndex={0}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleTogglePair(i); } }}
+              >
+                <div className={`pair-check ${enabled ? "checked" : ""}`}>
+                  {enabled && <IconCheck size={12} />}
+                </div>
+                <span className="pair-word pair-word-normal">{p[0]}</span>
+                <span className="preview-vs">vs</span>
+                <span className="pair-word pair-word-impostor">{p[1]}</span>
+              </div>
+            );
+          })}
         </div>
 
         <div className="preview-actions">
@@ -390,6 +456,7 @@ export default function CategoryScreen() {
       <div className="cat-list">
         {filtered.map(cat => {
           const pairs = getCategoryPairs(cat);
+          const enabledCount = getEnabledPairCount(cat);
           const isSel = selected.includes(cat);
           const isCustom = !isBuiltIn(cat);
 
@@ -401,7 +468,12 @@ export default function CategoryScreen() {
                 </div>
                 <div className="cat-card-info">
                   <span className="cat-card-name">{getCategoryDisplayName(lang, cat)}</span>
-                  <span className="cat-card-count">{t(lang, "pairsCount", { n: pairs.length })}</span>
+                  <span className="cat-card-count">
+                    {enabledCount === pairs.length
+                      ? t(lang, "pairsCount", { n: pairs.length })
+                      : `${enabledCount}/${pairs.length} ${t(lang, "pairsEnabled")}`
+                    }
+                  </span>
                 </div>
               </button>
               <div className="cat-card-actions">
