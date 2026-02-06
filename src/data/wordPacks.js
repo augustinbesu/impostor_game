@@ -112,7 +112,7 @@ const builtInPacks = {
     ["Spider-Man PS5", "Infamous"], ["Wii Sports", "Mario Party"],
     ["Terraria", "Starbound"], ["Destiny", "Warframe"],
   ],
-  // +++ Marcas y Fast Food +++
+  // +++ Marcas +++
   Marcas: [
     ["Nike", "Puma"], ["Apple", "Microsoft"],
     ["Coca-Cola", "Fanta"], ["McDonald's", "KFC"],
@@ -163,23 +163,6 @@ const builtInPacks = {
     ["Cachopo", "San Jacobo"], ["Bocadillo calamares", "Bocadillo lomo"],
     ["Torreznos", "Oreja"], ["Ensaladilla rusa", "Patatas alioli"],
     ["Kebab", "Durum"], ["Tequeños", "Croquetas"],
-  ],
-  // +++ España vs. Mundo (cultura pop) +++
-  EspanaVsMundo: [
-    ["Tortilla de patatas", "Frittata"], ["Churros", "Beignets"],
-    ["Flamenco", "Salsa"], ["La Tomatina", "Carnaval de Río"],
-    ["Paella", "Risotto"], ["Sangría", "Caipiriña"],
-    ["Siesta", "Nap"], ["Feria de Abril", "Oktoberfest"],
-    ["San Fermín", "Pamplonada"], ["Mercadona", "Carrefour"],
-    ["Telepizza", "Pizza Hut"], ["Zara", "Uniqlo"],
-    ["Renfe", "Amtrak"], ["BlaBlaCar", "Lyft"],
-    ["La Alhambra", "Machu Picchu"], ["Sagrada Familia", "Coliseo"],
-    ["El Camino de Santiago", "Camino Inca"], ["Tinto de verano", "Spritz"],
-    ["Cruzcampo", "Estrella Galicia"], ["Jamón ibérico", "Jamón serrano"],
-    ["Croquetas", "Coxinha"], ["Tapas", "Pintxos"],
-    ["TVE", "RAI"], ["El Hormiguero", "Late Motiv"],
-    ["La Resistencia", "El Intermedio"], ["OT", "La Voz"],
-    ["Lola Flores", "Rocío Jurado"], ["Paco de Lucía", "Camarón"],
   ],
 };
 
